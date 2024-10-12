@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+    
+    tools{
+        nodejs 'nodejs-10'
+    }
+
+    stages {
+        
+        stage('Git checkout') {
+            steps {
+               git branch: 'main', changelog: false, poll: false, url: 'https://github.com/jaiswaladi246/demo_nodejs_webpage.git'
+            }
+        }
+        
+        
+         stage('Install Dependencies') {
+            steps {
+              sh "npm install"
+            }
+        }
+        
+        
+        stage('OWASP Dependency Check') {
+            steps {
+              dependencyCheck additionalArguments: '--scan ./ ', odcInstallation: 'DP'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        
+        
+        stage('Docker Build & Push') {
+            steps {
+                script{
+                 withDockerRegistry(credentialsId: 'd2c303d8-445c-49cb-ad24-a689ae48ea66', toolName: 'Docker') {
+                     
+                        sh "docker build -t demonodejs ."
+                        sh "docker tag demonodejs shashankm31/nodeapp:latest"
+                        sh "docker push shashankm31/nodeapp:latest"
+         }
+                }
+             
+            }
+        }
+        
+        
+        stage('Docker Deploy') {
+            steps {
+                script{
+                 withDockerRegistry(credentialsId: 'd2c303d8-445c-49cb-ad24-a689ae48ea66', toolName: 'Docker') {
+                     
+                        sh "docker run -d --name demonode -p 8081:8081 shashankm31/nodeapp:latest  "
+                      
+         }
+                }
+             
+            }
+        }
+        
